@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Fetch Electron runtime
+        run: node scripts/fetch-electron.mjs
+
+      - name: Build and test
+        run: |
+          node scripts/build.mjs
+          node --test tests/*.test.ts
+
+      - name: Package
+        run: |
+          node scripts/package.mjs
+          node scripts/package-portable.mjs
+
+      - name: Publish release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+          $tag = "v$($pkg.version)"
+          $assets = @(
+            "dist/Desktophelper-Portable-$($pkg.version).exe",
+            "dist/Desktophelper-$($pkg.version)-win-x64.zip",
+            "dist/SHA256SUMS.txt"
+          )
+          foreach ($asset in $assets) {
+            if (-not (Test-Path -LiteralPath $asset)) { throw "missing asset: $asset" }
+          }
+
+          $fence = '```'
+          $body = ((Get-Content .github/release-notes.md -Raw).Replace('{{VERSION}}', $pkg.version)).Replace('{{SHA}}', $env:GITHUB_SHA)
+          $body += "`n`n## SHA-256`n$fence`n" + (Get-Content dist/SHA256SUMS.txt -Raw) + "$fence`n"
+          $notesPath = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          Set-Content -LiteralPath $notesPath -Value $body -Encoding UTF8
+
+          gh release view $tag --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --clobber
+            gh release edit $tag --title "Desktophelper $tag" --notes-file $notesPath
+          } else {
+            $targetArgs = @()
+            if ($env:GITHUB_REF_TYPE -ne 'tag') { $targetArgs = @('--target', $env:GITHUB_SHA) }
+            gh release create $tag @assets --title "Desktophelper $tag" --notes-file $notesPath @targetArgs
+          }
