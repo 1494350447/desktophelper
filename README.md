@@ -2,6 +2,7 @@
 
 一个本地优先的实时面试辅助浮层：转写、自动回答、截图分析、知识库。
 本项目是 **clean-room 重写**，没有账号、没有登录、没有 Token 刷新、没有服务端订阅或权益校验。
+发布页：<https://github.com/1494350447/desktophelper/releases/latest>
 
 - 默认使用本地演示模型，无需任何 Key 即可跑通完整流程。
 - 要获得真实回答，切换到任意 OpenAI 兼容接口并填写自己的 API Key。
@@ -15,7 +16,7 @@
 - 不包含 Electron 运行时、打包后的 EXE/ZIP、`dist/`、`work/` 或用户数据。
 - 不包含任何 API Key、登录凭据、原应用资源或加密资源。
 - 首次运行请执行 `node scripts/fetch-electron.mjs` 获取运行时。
-- 需要发布二进制时，在本地打包后通过 GitHub Releases 上传；单文件 EXE 超过 100 MiB，不能进普通源码仓库。
+- 二进制通过 GitHub Actions 构建并发布到 GitHub Releases；单文件 EXE 超过 100 MiB，不进入源码仓库。
 
 ## 当前状态
 
@@ -94,6 +95,15 @@ node scripts/package-portable.mjs  # 单文件便携 EXE
 - 单文件版首次启动会解压到 `%LOCALAPPDATA%\DesktophelperApp\0.1.0-<构建指纹>`，之后直接启动；重新打包会生成新的构建指纹。
 - 未做代码签名，Windows 首次运行可能出现 SmartScreen 提示，选择“更多信息 → 仍要运行”。
 - 用户配置、截图与知识库默认保存在 `%APPDATA%\DesktophelperRewrite`，与原版数据完全隔离。
+
+## 自动发布
+
+推送 v* 标签会触发 .github/workflows/release.yml，在 Windows Runner 上构建、运行测试、打包并创建或更新 GitHub Release。
+
+    git tag -a v0.1.0 -m "Desktophelper v0.1.0"
+    git push origin v0.1.0
+
+也可以在 GitHub Actions 页面手动运行 Release 工作流。发布产物包括目录版 ZIP、单文件便携 EXE 和 SHA256SUMS.txt。
 
 ## 第一次使用
 
