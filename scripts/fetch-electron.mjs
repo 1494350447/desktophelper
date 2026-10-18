@@ -42,7 +42,8 @@ async function download(url, destination) {
   if (!response.ok || !response.body) {
     throw new Error("download failed: HTTP " + response.status + " " + response.statusText);
   }
-  const total = Number(response.headers.get("content-length") || 0);
+  const encoding = (response.headers.get("content-encoding") || "identity").toLowerCase();
+  const total = encoding === "identity" ? Number(response.headers.get("content-length") || 0) : 0;
   let received = 0;
   let lastPercent = -1;
   const body = Readable.fromWeb(response.body);
