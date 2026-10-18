@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Desktophelper</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="titlebar" id="titlebar" title="拖动此处移动窗口；浮层不会抢占考试窗口焦点">
+        <div class="brand">
+          <span class="brand-name">Desktophelper</span>
+          <span class="version" id="version">v0</span>
+          <span class="status-lights" id="status-lights" aria-label="运行状态">
+            <span class="status-light" id="light-focus" title="防切屏：浮层为免激活窗口，不抢占考试页焦点"><i></i>防切屏</span>
+            <span class="status-light" id="light-capture" title="防录屏：浮层不会出现在屏幕共享与录屏画面中"><i></i>防录屏</span>
+            <button type="button" class="status-light listen idle" id="btn-listen" data-action="toggle-listen" title="开始收音（Ctrl+M）" aria-label="开始收音" aria-pressed="false"><i></i>收音</button>
+          </span>
+        </div>
+        <div class="title-actions">
+          <button class="icon" data-action="toggle-layout" id="btn-expand" title="展开工作区" aria-label="展开工作区">⤢</button>
+          <button class="icon" data-action="close" title="关闭" aria-label="关闭">×</button>
+        </div>
+      </header>
+
+      <nav class="nav-strip" aria-label="主功能">
+        <button data-tab="shots" class="active">截图<span id="nav-shots-count" class="nav-badge"></span></button>
+        <button data-tab="voice">语音<span id="nav-voice-count" class="nav-badge"></span></button>
+        <button data-tab="more">更多</button>
+      </nav>
+
+      <div class="shell">
+        <main>
+          <section id="tab-voice" class="tab">
+            <div class="voice-shell">
+              <section class="live voice-live">
+                <div class="live-head">
+                  <h2>实时转写</h2>
+                  <span class="led mic" id="led-mic" title="麦克风"></span>
+                  <span class="led system" id="led-system" title="系统声音"></span>
+                  <span class="spacer"></span>
+                  <button data-action="toggle-voice-answers" id="btn-voice-answers" class="mini voice-answers-toggle" title="展开回答记录">回答<span id="voice-answer-count" class="nav-badge"></span></button>
+                  <button data-action="clear-transcript" class="mini">清空</button>
+                </div>
+                <div class="hint live-hint" id="listen-hint">未收音</div>
+                <div id="segments" class="list segments"></div>
+                <div class="speaker-legend">
+                  <span class="chip me">我</span><span class="chip interviewer">对方</span>
+                  <span class="hint">点击标签切换归属</span>
+                </div>
+                <form id="ask-form" class="ask voice-ask">
+                  <textarea id="ask-input" rows="2" placeholder="输入问题，Enter 发送"></textarea>
+                  <button type="submit" class="primary">提问</button>
+                </form>
+              </section>
+              <div class="voice-side">
+                <section class="voice-card voice-answers-card">
+                  <div class="voice-card-head">
+                    <strong>回答记录</strong>
+                    <span class="hint" id="voice-model-hint"></span>
+                    <span class="spacer"></span>
+                    <span class="hint" id="queue-count"></span>
+                    <button data-action="toggle-voice-answers" class="mini voice-answers-close" title="收起回答记录">收起</button>
+                  </div>
+                  <div id="voice-queue-wrap" class="voice-queue-wrap" hidden>
+                    <div id="queue" class="queue"></div>
+                  </div>
+                  <div id="voice-answers" class="list answers voice-answers"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-shots" class="tab active">
+            <div class="workbench">
+              <div class="wb-head">
+                <div class="wb-meta">
+                  <div class="group-nav" id="group-nav" data-group-nav title="左右滑动或点击箭头切换历史题组">
+                    <button type="button" class="group-nav-btn" id="group-prev" data-action="group-prev" aria-label="较新的一组" title="较新的一组">‹</button>
+                    <div class="wb-title" id="group-position">还没有截图</div>
+                    <button type="button" class="group-nav-btn" id="group-next" data-action="group-next" aria-label="较旧的一组" title="较旧的一组">›</button>
+                  </div>
+                  <div class="hint" id="shots-summary">连续截图自动加入当前组；重新截图会新建一组</div>
+                </div>
+                <div class="wb-actions">
+                  <button data-action="delete-last-shot" id="btn-delete-last" class="compact-hide" title="删除当前组最后一张（Ctrl+L）">删除最后一张</button>
+                  <div class="menu-wrap capture-menu menu-left" id="capture-menu-wrap">
+                    <button data-action="capture-region" class="primary" title="区域截图（Ctrl+H）">＋截图</button>
+                    <button class="caret" data-action="capture-menu" title="选择截图方式">▾</button>
+                    <div class="menu">
+                      <button data-action="capture-region">区域截图 <kbd>Ctrl+H</kbd></button>
+                      <button data-action="capture-full">全屏截图 <kbd>Ctrl+Shift+A</kbd></button>
+                    </div>
+                  </div>
+                  <button data-action="solve-current" id="btn-solve-current" class="primary" title="处理当前组（Ctrl+Enter）">解题</button>
+                </div>
+              </div>
+              <div class="wb-body">
+                <div class="shot-rail">
+                  <div class="rail-head"><span>截图队列</span><span class="hint" id="group-count">0 组</span></div>
+                  <div id="shots" class="group-list"></div>
+                </div>
+                <div class="answer-pane">
+                  <div class="pane-head">
+                    <h2 id="answer-title">解答</h2>
+                    <span class="hint" id="answer-meta"></span>
+                    <span class="spacer"></span>
+                    <button data-action="copy-current" class="mini" title="复制当前组解答">复制</button>
+                  </div>
+                  <div id="group-answer" class="group-answer"></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="tab-more" class="tab">
+            <div class="more-page">
+              <div class="more-head">
+                <strong>更多</strong>
+                <span class="hint">设置、资料与高级操作</span>
+              </div>
+              <button class="more-row" data-action="open-settings">
+                <span class="more-icon">⚙</span>
+                <span class="more-copy"><b>设置与模型</b><small>文本 / 视觉 / 转写接口、截图流程、触发与隐私</small></span>
+                <span class="more-arrow">›</span>
+              </button>
+              <button class="more-row" data-action="open-knowledge">
+                <span class="more-icon">▤</span>
+                <span class="more-copy"><b>知识库</b><small>导入资料并启用回答检索</small></span>
+                <span class="more-arrow">›</span>
+              </button>
+              <button class="more-row" data-action="open-settings" data-section="hotkeys">
+                <span class="more-icon">⌨</span>
+                <span class="more-copy"><b>快捷键与冲突</b><small>录制组合键、查看注册状态与占用冲突</small></span>
+                <span class="more-arrow">›</span>
+              </button>
+              <div class="more-divider"></div>
+              <button class="more-row" data-action="new-session">
+                <span class="more-icon">＋</span>
+                <span class="more-copy"><b>新建会话</b><small>清空当前转写与回答，开始新一轮</small></span>
+              </button>
+              <button class="more-row danger" data-action="emergency-hide">
+                <span class="more-icon">◐</span>
+                <span class="more-copy"><b>紧急隐身</b><small>立即停止收音并隐藏浮层</small></span>
+                <span class="more-arrow" id="emergency-hotkey">Ctrl+Shift+H</span>
+              </button>
+            </div>
+          </section>
+
+
+        <section id="tab-knowledge" class="tab">
+          <div class="toolbar">
+            <button data-action="back-more" class="mini">← 返回</button>
+            <button data-action="kb-import" class="primary">导入文档</button>
+            <label class="switch"><input type="checkbox" id="kb-enabled" /><span>回答时启用检索</span></label>
+            <input id="kb-search" type="search" placeholder="搜索资料…" />
+            <button data-action="kb-search">搜索</button>
+          </div>
+          <div id="kb-status" class="hint"></div>
+          <div id="kb-hits" class="kb-hits"></div>
+          <div id="kb-docs" class="list"></div>
+        </section>
+
+        <section id="tab-settings" class="tab">
+          <div class="settings-scroll">
+            <div class="row">
+              <button data-action="back-more" class="mini">← 返回</button>
+              <span class="hint">设置与模型</span>
+            </div>
+            <section class="card">
+              <h2>文本模型（面试回答 / 文本解题）</h2>
+              <div class="grid2">
+                <label>提供方
+                  <select id="llm-provider">
+                    <option value="mock">演示模式（无需 Key）</option>
+                    <option value="openai">OpenAI 兼容接口</option>
+                  </select>
+                </label>
+                <label>模型名 <input id="llm-model" /></label>
+                <label class="wide">Base URL <input id="llm-baseurl" /></label>
+                <label>温度 <input id="llm-temperature" type="number" step="0.1" min="0" max="2" /></label>
+                <label>最大 Token <input id="llm-maxtokens" type="number" min="128" max="16000" /></label>
+                <label>回答风格
+                  <select id="llm-style">
+                    <option value="concise">极简</option>
+                    <option value="detailed">详细</option>
+                    <option value="star">STAR</option>
+                  </select>
+                </label>
+              </div>
+              <p class="hint">推理模型（如 deepseek-flash、o 系列）会自动保证至少 4096 tokens，避免推理内容占满输出上限。</p>
+              <div class="row">
+                <input id="secret-llm" type="password" placeholder="模型 API Key（仅保存在本机）" />
+                <button data-action="save-secret" data-key="llm">保存 Key</button>
+                <button data-action="clear-secret" data-key="llm">清除</button>
+                <button data-action="test-service" data-service="llm">测试连接</button>
+                <span class="badge" id="secret-llm-status"></span>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>转写</h2>
+              <div class="grid2">
+                <label>提供方
+                  <select id="trans-provider">
+                    <option value="mock">演示模式</option>
+                    <option value="openai">OpenAI 兼容接口</option>
+                    <option value="dashscope">DashScope 实时（WebSocket）</option>
+                    <option value="dashscope-http">阿里百炼（HTTP 批量）</option>
+                  </select>
+                </label>
+                <label>转写模式
+                  <select id="trans-mode">
+                    <option value="batch">批量转写</option>
+                    <option value="realtime">实时流式</option>
+                  </select>
+                </label>
+                <label>模型名 <input id="trans-model" /></label>
+                <label class="wide">Base URL <input id="trans-baseurl" /></label>
+                <label>语言 <input id="trans-language" /></label>
+                <label>最长句长（秒） <input id="trans-chunk" type="number" min="4" max="60" /></label>
+                <label>麦克风归属
+                  <select id="voice-mic-speaker">
+                    <option value="me">我</option>
+                    <option value="interviewer">对方</option>
+                  </select>
+                </label>
+                <label>系统声音归属
+                  <select id="voice-system-speaker">
+                    <option value="me">我</option>
+                    <option value="interviewer">对方</option>
+                  </select>
+                </label>
+              </div>
+              <div class="row">
+                <label class="switch"><input type="checkbox" id="voice-system-audio" /><span>收音时同时捕获系统声音（Windows loopback）</span></label>
+              </div>
+              <p class="hint">麦克风与系统声音各自独立转写；默认麦克风=我，系统声音=对方。批量模式在停顿后上传 16kHz WAV；阿里百炼 HTTP 批量适合按句上传，识别后触发回答。DashScope 实时模式使用 16kHz PCM 持续上传，一句话结束后立即触发自动回答。</p>
+              <div class="row">
+                <input id="secret-transcription" type="password" placeholder="转写 API Key" />
+                <button data-action="save-secret" data-key="transcription">保存 Key</button>
+                <button data-action="clear-secret" data-key="transcription">清除</button>
+                <button data-action="test-service" data-service="transcription">测试连接</button>
+                <span class="badge" id="secret-transcription-status"></span>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>视觉</h2>
+              <p class="hint" id="vision-llm-hint" hidden></p>
+              <div class="grid2">
+                <label>提供方
+                  <select id="vision-provider">
+                    <option value="mock">演示模式</option>
+                    <option value="openai">OpenAI 兼容接口</option>
+                  </select>
+                </label>
+                <label>模型名 <input id="vision-model" /></label>
+                <label class="wide">Base URL <input id="vision-baseurl" /></label>
+                <label>最大 Token <input id="vision-maxtokens" type="number" min="128" max="16000" /></label>
+              </div>
+              <p class="hint">推理模型会自动保证至少 4096 tokens；仍被截断时应用会报错，而不是显示空答案。</p>
+              <div class="row">
+                <label class="switch"><input type="checkbox" id="vision-use-llm" /><span>复用文本模型的接口、模型和 Key（模型必须支持图片输入）</span></label>
+              </div>
+              <div class="row">
+                <input id="secret-vision" type="password" placeholder="视觉 API Key" />
+                <button data-action="save-secret" data-key="vision">保存 Key</button>
+                <button data-action="clear-secret" data-key="vision">清除</button>
+                <button data-action="test-service" data-service="vision">测试连接</button>
+                <span class="badge" id="secret-vision-status"></span>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>题面提取</h2>
+              <p class="hint">纯文本解题模型需要先由支持图片输入的提取模型读出题面。视觉模型可直接读图时可不配置。</p>
+              <p class="hint" id="extraction-llm-hint" hidden></p>
+              <div class="grid2">
+                <label>提供方
+                  <select id="extraction-provider">
+                    <option value="mock">演示模式</option>
+                    <option value="openai">OpenAI 兼容接口</option>
+                  </select>
+                </label>
+                <label>模型名 <input id="extraction-model" /></label>
+                <label class="wide">Base URL <input id="extraction-baseurl" /></label>
+                <label>最大 Token <input id="extraction-maxtokens" type="number" min="128" max="16000" /></label>
+              </div>
+              <p class="hint">推理模型会自动保证至少 4096 tokens；提取失败时会给出明确错误。</p>
+              <div class="row">
+                <label class="switch"><input type="checkbox" id="extraction-use-llm" /><span>复用文本模型的接口、模型和 Key（模型必须支持图片输入）</span></label>
+              </div>
+              <div class="row">
+                <input id="secret-extraction" type="password" placeholder="提取模型 API Key" />
+                <button data-action="save-secret" data-key="extraction">保存 Key</button>
+                <button data-action="clear-secret" data-key="extraction">清除</button>
+                <button data-action="test-service" data-service="extraction">测试连接</button>
+                <span class="badge" id="secret-extraction-status"></span>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>截图流程</h2>
+              <div class="grid2">
+                <label>解题策略
+                  <select id="shot-strategy">
+                    <option value="auto">自动（优先视觉）</option>
+                    <option value="vision">直接视觉解题</option>
+                    <option value="extract">先提取题面再解题</option>
+                  </select>
+                </label>
+                <label>补图上限 <input id="shot-maximages" type="number" min="1" max="6" /></label>
+                <label class="switch"><input type="checkbox" id="shot-fallback" /><span>视觉失败时回退到提取 + 文本解题</span></label>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>触发与浮层</h2>
+              <p class="hint">窗口默认点击穿透。点击顶部标题栏会激活整窗交互，按 Esc 或点击其他应用即可恢复穿透；拖动标题栏移动窗口，右下角可缩放。</p>
+              <div class="grid2">
+                <label>最小字数 <input id="trigger-minchars" type="number" min="1" max="200" /></label>
+                <label>节流毫秒 <input id="trigger-throttle" type="number" min="0" max="120000" /></label>
+                <label>回答上限 <input id="trigger-maxanswers" type="number" min="1" max="50" /></label>
+                <label>目标说话人
+                  <select id="trigger-target">
+                    <option value="interviewer">对方</option>
+                    <option value="me">我</option>
+                    <option value="both">双方</option>
+                  </select>
+                </label>
+                <label>浮层透明度 <input id="overlay-opacity" type="number" step="0.05" min="0.2" max="1" /></label>
+                <label>字号 <input id="overlay-font" type="number" min="10" max="28" /></label>
+              </div>
+              <div class="row">
+                <label class="switch"><input type="checkbox" id="trigger-autodrain" /><span>自动处理队列</span></label>
+                <label class="switch"><input type="checkbox" id="overlay-ontop" /><span>始终置顶</span></label>
+              </div>
+              <p class="hint">界面默认单栏；点击标题栏右上的展开按钮可切换到双栏工作区，再点一次收回。</p>
+            </section>
+
+            <section class="card">
+              <h2>屏幕共享保护</h2>
+              <p class="hint">
+                Windows 10 2004+ 会把浮层从屏幕共享 / 录屏画面中移除；更旧的 Windows 版本会显示为黑块。
+                macOS 仅作兼容尝试，ScreenCaptureKit 仍可能捕获浮层。此功能只作用于浮层，不影响区域截图。
+              </p>
+              <label class="switch"><input type="checkbox" id="privacy-exclude-capture" /><span>在屏幕共享 / 录屏中隐藏浮层</span></label>
+            </section>
+
+            <section class="card">
+              <h2>本地锁</h2>
+              <p class="hint">本地锁只保护界面与数据展示，不涉及任何账号或服务端校验。</p>
+              <div class="row">
+                <input id="lock-passcode" type="password" placeholder="设置 / 修改密码（至少 4 位）" />
+                <button data-action="lock-set">设置密码</button>
+                <button data-action="lock-clear">清除密码</button>
+                <span class="badge" id="lock-status-text"></span>
+              </div>
+            </section>
+
+            <section class="card" id="hotkey-card">
+              <h2>快捷键</h2>
+              <p class="hint">点击输入框后直接按组合键即可录制；按 Esc、Backspace 或右侧 × 取消绑定。留空表示不注册全局快捷键。</p>
+              <div class="hotkey-summary" id="hotkey-summary">正在检测快捷键状态…</div>
+              <div id="hotkey-groups" class="hotkey-groups"></div>
+            </section>
+
+            <div class="row sticky-actions">
+              <button data-action="save-settings" class="primary">保存设置</button>
+              <button data-action="reset-settings">恢复默认</button>
+              <span class="hint">数据目录：<code id="data-dir"></code></span>
+            </div>
+          </div>
+        </section>
+        </main>
+      </div>
+
+      <footer class="shortcut-bar">
+        <button type="button" data-action="capture-region"><kbd id="shortcut-capture">Ctrl+H</kbd> 截图</button>
+        <button type="button" data-action="solve-current"><kbd id="shortcut-solve">Ctrl+Enter</kbd> 解题</button>
+        <button type="button" data-action="toggle-listen"><kbd id="shortcut-listen">Ctrl+M</kbd> 收音</button>
+      </footer>
+
+      <div id="toasts" class="toasts"></div>
+
+      <div id="lock-screen" class="lock-screen hidden">
+        <div class="lock-card">
+          <h2>应用已锁定</h2>
+          <p class="hint">输入本地密码继续</p>
+          <input id="unlock-passcode" type="password" placeholder="密码" />
+          <button data-action="unlock" class="primary">解锁</button>
+          <p id="unlock-error" class="error"></p>
+        </div>
+      </div>
+    </div>
+    <div id="resize-grip" title="拖动调整窗口大小" aria-label="调整窗口大小"></div>
+    <script type="module" src="./renderer.js"></script>
+  </body>
+</html>
