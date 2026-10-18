@@ -76,9 +76,9 @@ npm run verify   # 测试 + E2E
 
 运行下面的命令后，产物会生成在 `dist/`（该目录已在 `.gitignore` 中排除，不会提交）：
 
-- 目录版：`dist/Desktophelper-0.1.0-win-x64/Desktophelper.exe`
-- 单文件版：`dist/Desktophelper-Portable-0.1.0.exe`
-- 压缩包：`dist/Desktophelper-0.1.0-win-x64.zip`
+- 目录版：`dist/Desktophelper-0.1.1-win-x64/Desktophelper.exe`
+- 单文件版：`dist/Desktophelper-Portable-0.1.1.exe`
+- 压缩包：`dist/Desktophelper-0.1.1-win-x64.zip`
 - 校验值：`dist/SHA256SUMS.txt`
 
 打包命令：
@@ -92,7 +92,7 @@ node scripts/package-portable.mjs  # 单文件便携 EXE
 
 - 使用 `work/e2e-runtime` 中的 Electron 29.4.6 干净运行时；下载压缩包缓存在 `work/electron-cache`。
 - 目录版启动最快，整个文件夹可以复制到任意位置，但不能只复制 exe。
-- 单文件版首次启动会解压到 `%LOCALAPPDATA%\DesktophelperApp\0.1.0-<构建指纹>`，之后直接启动；重新打包会生成新的构建指纹。
+- 单文件版首次启动会解压到 `%LOCALAPPDATA%\DesktophelperApp\0.1.1-<构建指纹>`，之后直接启动；重新打包会生成新的构建指纹。
 - 未做代码签名，Windows 首次运行可能出现 SmartScreen 提示，选择“更多信息 → 仍要运行”。
 - 用户配置、截图与知识库默认保存在 `%APPDATA%\DesktophelperRewrite`，与原版数据完全隔离。
 
@@ -100,8 +100,8 @@ node scripts/package-portable.mjs  # 单文件便携 EXE
 
 推送 v* 标签会触发 .github/workflows/release.yml，在 Windows Runner 上构建、运行测试、打包并创建或更新 GitHub Release。
 
-    git tag -a v0.1.0 -m "Desktophelper v0.1.0"
-    git push origin v0.1.0
+    git tag -a v0.1.1 -m "Desktophelper v0.1.1"
+    git push origin v0.1.1
 
 也可以在 GitHub Actions 页面手动运行 Release 工作流。发布产物包括目录版 ZIP、单文件便携 EXE 和 SHA256SUMS.txt。
 

@@ -8,6 +8,7 @@ Desktophelper {{VERSION}} — clean-room Electron 重写版。
 
 ## 说明
 
+- 修复单文件版解压失败：分发包内说明文件改为 ASCII 文件名，并增加 ZIP 条目名校验。
 - Windows 10/11 x64，内置 Electron 29.4.6。
 - 未做代码签名，首次运行可能出现 SmartScreen 提示，选择“更多信息 → 仍要运行”。
 - 用户数据默认保存在 `%APPDATA%\DesktophelperRewrite`，与原应用隔离。

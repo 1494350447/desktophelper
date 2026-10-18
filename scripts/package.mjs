@@ -4,6 +4,7 @@ import { createReadStream, existsSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertSafeZipEntries } from "./zip-safety.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "out");
@@ -116,7 +117,7 @@ async function main() {
     "Ctrl+M      收音开关",
     "",
   ].join("\r\n");
-  await writeFile(join(stageDir, "启动说明.txt"), "\ufeff" + readme, "utf8");
+  await writeFile(join(stageDir, "README.txt"), "\ufeff" + readme, "utf8");
 
   if (existsSync(zipPath)) await rm(zipPath, { force: true });
   const tar = spawnSync("tar.exe", ["-a", "-c", "-f", zipPath, "-C", distDir, stageName], {
@@ -124,6 +125,7 @@ async function main() {
     stdio: "inherit",
   });
   if (tar.status !== 0) throw new Error("failed to create zip archive");
+  assertSafeZipEntries(zipPath);
 
   const zipHash = await sha256(zipPath);
   await writeFile(join(distDir, "SHA256SUMS.txt"), zipHash + "  " + stageName + ".zip\r\n", "utf8");
